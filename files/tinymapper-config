@@ -1,0 +1,9 @@
+
+config tinymapper 'mapper1'
+	option enabled '0'
+	option local '0.0.0.0:4095'
+	option remote '127.0.0.1:443'
+	option tcp '1'
+	option udp '0'
+	option sock_buf '1024'
+	option log_level '4'
