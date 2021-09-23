@@ -20,6 +20,28 @@ validate_tinymapper_section()
 		'log_level:integer:4'
 }
 
+try_resolve_host()
+{
+	local host_port host port resolved
+
+	host_port=${1}
+	host=$(echo $host_port | cut -d : -f 1)
+	port=$(echo $host_port | cut -d : -f 2)
+
+	#  Try resolve host using dig if host is not an IP address
+	if [[ ! $host =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+		resolved=`dig +short $host | tail -1`
+		while [[ -z $resolved ]] || [[ ! $resolved =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; do
+			sleep 2
+			resolved=`dig +short $host | tail -1`
+		done
+		logger -t "tinymapper" "resolved host ${host} to ${resolved}"
+		host=$resolved
+	fi
+
+	echo "${host}:${port}"
+}
+
 start_instance()
 {
 	local section="$1"
@@ -40,37 +62,13 @@ start_instance()
 	fi
 
 	procd_open_instance
-	procd_set_param respawn
 	procd_set_param stderr 1
 	procd_set_param stdout 1
 
 	procd_set_param command "${PROG}"
 
-	host=$(echo $remote | cut -d : -f 1)
-	port=$(echo $remote | cut -d : -f 2)
-	if [[ ! $host =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-		resolved=$(dig +short $host | tail -n1)
-		if [[ ! $resolved =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-			logger -t "tinyPortMapper" "failed to resolve remote ${host}, got ${resolved}"
-			return 1
-		fi
-		logger -t "tinyPortMapper" "resolved remote ${host} to ${resolved}"
-		host=$resolved
-	fi
-	procd_append_param command -r "${host}:${port}"
-	
-	host=$(echo $local | cut -d : -f 1)
-	port=$(echo $local | cut -d : -f 2)
-	if [[ ! $host =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-		resolved=$(dig +short $host | tail -n1)
-		if [[ ! $resolved =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-			logger -t "tinyPortMapper" "failed to resolve local ${host}, got ${resolved}"
-			return 1
-		fi
-		logger -t "tinyPortMapper" "resolved local ${host} to ${resolved}"
-		host=$resolved
-	fi
-	procd_append_param command -l "${host}:${port}"
+	procd_append_param command -r $(try_resolve_host $remote)
+	procd_append_param command -l $(try_resolve_host $local)
 	
 	if [ "${tcp}" -eq 1 ]; then
 		procd_append_param command -t
