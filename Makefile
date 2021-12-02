@@ -28,7 +28,7 @@ define Package/tinyPortMapper
 	CATEGORY:=Network
 	TITLE:=Port Mapping/Forwarding Utility
 	URL:=https://github.com/wangyu-/tinyPortMapper
-	DEPENDS:= +libstdcpp +librt +bind-dig
+	DEPENDS:= +libstdcpp +librt +resolveip
 endef
 
 define Package/tinyPortMapper/description
